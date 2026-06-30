@@ -129,6 +129,8 @@ input,select,textarea{font-family:inherit}
 
 .sidebar-foot{margin-top:auto;padding:14px 10px 4px;border-top:1px solid var(--stroke);font-size:11px;color:var(--faint);line-height:1.6}
 .sidebar-foot b{color:var(--muted);font-weight:600}
+.reset-btn{margin-top:12px;width:100%;padding:9px;border-radius:var(--r-sm);font-size:12px;font-weight:600;color:var(--muted);background:rgba(255,255,255,0.04);border:1px solid var(--stroke);transition:.16s}
+.reset-btn:hover{color:var(--text);border-color:var(--stroke-bright);background:rgba(168,85,247,0.12)}
 
 /* main column */
 .main{min-width:0;display:flex;flex-direction:column}
@@ -451,6 +453,7 @@ input,select,textarea{font-family:inherit}
       <b>Riverstone College</b><br>
       Daily ops, gamified.<br>
       <span id="clock"></span>
+      <button class="reset-btn" id="resetBtn" title="Restore the 20 sample quests">↺ Reset sample data</button>
     </div>
   </aside>
   <div class="scrim" id="scrim"></div>
@@ -570,12 +573,28 @@ function descFor(cat){
   return m[cat]||'A daily campus operations task.';
 }
 
-/* ---------- state + persistence ---------- */
+/* ---------- state + persistence ----------
+   Stored as {v, quests}. We reseed whenever storage is missing, empty,
+   corrupt, or from an older version — so the sample data always shows up. */
+const SEED_VERSION = 2;
 const store = {
-  load(){ try{ const r=localStorage.getItem('campusquest'); if(r) return JSON.parse(r); }catch(e){} return null; },
-  save(q){ try{ localStorage.setItem('campusquest', JSON.stringify(q)); }catch(e){} }
+  load(){
+    try{
+      const raw = localStorage.getItem('campusquest');
+      if(!raw) return null;
+      const data = JSON.parse(raw);
+      const arr  = Array.isArray(data) ? data : data.quests;   // accept old array format too
+      const ver  = Array.isArray(data) ? 0    : data.v;
+      if(!Array.isArray(arr) || arr.length === 0) return null;  // empty -> reseed
+      if(ver !== SEED_VERSION) return null;                     // outdated -> reseed
+      return arr;
+    }catch(e){ return null; }
+  },
+  save(q){ try{ localStorage.setItem('campusquest', JSON.stringify({v:SEED_VERSION, quests:q})); }catch(e){} },
+  clear(){ try{ localStorage.removeItem('campusquest'); }catch(e){} }
 };
-let quests = store.load() || seed();
+let quests = store.load();
+if(!quests || !quests.length){ quests = seed(); store.save(quests); }   // guarantee sample data
 let state = { view:'dashboard', search:'', f_status:'all', f_priority:'all', f_category:'all', f_quick:null };
 
 /* ---------- XP / level ---------- */
@@ -1045,6 +1064,14 @@ document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=
 }));
 
 document.getElementById('newQuestBtn').onclick=openQuestModal;
+
+document.getElementById('resetBtn').onclick=()=>{
+  store.clear(); quests=seed(); store.save(quests);
+  state={view:'dashboard',search:'',f_status:'all',f_priority:'all',f_category:'all',f_quick:null};
+  document.getElementById('searchInput').value='';
+  closeMenu(); toast('↺','Sample data restored','');
+  render();
+};
 
 document.getElementById('searchInput').addEventListener('input',e=>{
   state.search=e.target.value;
