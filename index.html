@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
 <title>CampusQuest — Daily Task Command Center</title>
 <meta name="description" content="A gamified daily task command center for college operations." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1047,7 +1049,7 @@ function drawP(){
   }
   requestAnimationFrame(drawP);
 }
-if(!matchMedia('(prefers-reduced-motion:reduce)').matches){ sizeP(); addEventListener('resize',sizeP); drawP(); }
+try{ if(!matchMedia('(prefers-reduced-motion:reduce)').matches){ sizeP(); addEventListener('resize',sizeP); drawP(); } }catch(e){ console.warn('Particles disabled:',e); }
 
 /* ============================================================
    Events
@@ -1109,7 +1111,17 @@ tick(); setInterval(tick,30000);
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 /* ---------- boot ---------- */
-render();
+try{
+  render();
+}catch(err){
+  console.error('CampusQuest boot error:', err);
+  viewEl.innerHTML = '<div class="view"><div class="empty">'
+    + '<div class="em">⚠️</div>'
+    + '<h4>The app hit an error while loading</h4>'
+    + '<p>' + esc(String((err && err.message) || err)) + '</p>'
+    + '<button class="btn btn-primary" style="margin-top:14px" onclick="try{localStorage.removeItem(\'campusquest\')}catch(e){};location.reload()">Reset & reload</button>'
+    + '</div></div>';
+}
 </script>
 </body>
 </html>
